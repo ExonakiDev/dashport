@@ -4,5 +4,5 @@ package api
 type Broker interface {
 	Authenticate() error
 	RefreshToken() error
-	GetPortfolio() {interface{}, error}
+	// GetPortfolio() {interface{}, error}
 }

@@ -6,42 +6,43 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+
 	//"os"
 	"time"
 
 	"golang.org/x/oauth2"
 )
 
-var ( 
-	schwabAuthURL = "https://api.schwabapi.com/v1/oauth/authorize"
+var (
+	schwabAuthURL  = "https://api.schwabapi.com/v1/oauth/authorize"
 	schwabTokenURL = "https://api.schwabapi.com/v1/oauth/token"
 )
 
 type OAuthClient struct {
 	Config *oauth2.Config
-	Token *oauth2.Token
+	Token  *oauth2.Token
 }
 
-func NewAuthClient(clientId, clientSecret, redirectURL string) *OAuthClient{
+func NewAuthClient(clientId, clientSecret, redirectURL string) *OAuthClient {
 	return &OAuthClient{
 		Config: &oauth2.Config{
-			ClientID: clientId,
+			ClientID:     clientId,
 			ClientSecret: clientSecret,
-			RedirectURL: redirectURL,
-			Scopes: []string{"read_only"},
+			RedirectURL:  redirectURL,
+			Scopes:       []string{"read_only"},
 			Endpoint: oauth2.Endpoint{
-				AuthURL: schwabAuthURL,
+				AuthURL:  schwabAuthURL,
 				TokenURL: schwabTokenURL,
 			},
 		},
 	}
 }
 
-func (c *OAuthClient) Authenticate() (error) {
+func (c *OAuthClient) Authenticate() error {
 	url := fmt.Sprintf("%s?client_id=%s&redirect_uri=%s", schwabAuthURL, c.Config.ClientID, c.Config.RedirectURL)
 	fmt.Println("Visit URL:")
 	fmt.Println(url)
-	
+
 	// make channel
 	codeCh := make(chan string)
 	// make http server
@@ -51,19 +52,20 @@ func (c *OAuthClient) Authenticate() (error) {
 		code := r.URL.Query().Get("code")
 		session := r.URL.Query().Get("session")
 		fmt.Fprintf(w, "Authorization code received! You can close this window.\n")
-    fmt.Printf("Code: %s\nSession: %s\n", code, session)
-	
+		fmt.Printf("Code: %s\nSession: %s\n", code, session)
+
 		codeCh <- code
 	})
-	
+
 	go func() {
-			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					log.Fatalf("Server failed: %v", err)
-			}
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
 	}()
 
 	// Wait for code
-	//code := <-codeCh
+	code := <-codeCh
+	fmt.Printf("Received code from Schwab API: %s\n", code)
 
 	// Shutdown server gracefully
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
