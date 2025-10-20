@@ -43,17 +43,6 @@ func main() {
 	}
 
 	fmt.Println(token)
-	// ✅ 4. Create authenticated client using your OAuth client
-	// client := oauthClient.GetClient(token)
-
-	// ✅ 5. Make a sample API call to verify it works
-	//resp, err := client.Get("https://api.schwabapi.com/trader/v1/accounts")
-	//if err != nil {
-	//	log.Fatalf("Failed to call Schwab API: %v", err)
-	//}
-	//defer resp.Body.Close()
-
-	// fmt.Printf("API Response: %s\n", resp.Status)
 }
 
 func saveToken(path string, token *oauth2.Token) {
