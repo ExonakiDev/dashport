@@ -42,7 +42,7 @@ func main() {
 		saveToken(tokenFile, &token)
 	}
 
-	fmt.Println(token)
+	fmt.Sprintf("Received Token: %s", token.AccessToken)
 }
 
 func saveToken(path string, token *oauth2.Token) {

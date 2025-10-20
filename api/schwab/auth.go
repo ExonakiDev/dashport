@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"strings"
@@ -84,12 +85,13 @@ func (c *OAuthClient) Authenticate() (string, error) {
 // -d 'grant_type=authorization_code&code={AUTHORIZATION_CODE_VALUE}&redirect_uri=https://example_url.com/callback_example'
 
 func (c *OAuthClient) GetToken(code string) oauth2.Token {
+	log.Print("Attempting to get token..")
 	clientIDSecret := c.Config.ClientID + ":" + c.Config.ClientSecret
 	credentials := base64.StdEncoding.EncodeToString([]byte(clientIDSecret))
 
 	data := url.Values{}
 	data.Set("grant_type", fmt.Sprintf("authorization_code&code=%s&redirect_uri=%s", code, c.Config.RedirectURL))
-	req, err := http.NewRequest("GET", schwabTokenURL, strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", schwabTokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		panic(err)
 	}
@@ -97,9 +99,18 @@ func (c *OAuthClient) GetToken(code string) oauth2.Token {
 	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", credentials))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
+	dumpedRequest, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Dumped Request")
+	fmt.Printf("Sending Request: %s", string(dumpedRequest))
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Fatal("Failed to create Request!")
 		panic(err)
 	}
 	defer resp.Body.Close()
