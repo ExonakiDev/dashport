@@ -1,4 +1,3 @@
-// api/schwab/auth.go
 package schwab
 
 import (
