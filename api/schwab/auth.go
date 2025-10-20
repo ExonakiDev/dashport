@@ -43,13 +43,13 @@ type TokenResponse struct {
 	Scope        string `json:"Scope"`
 	RefreshToken string `json:"refresh_token"`
 	AccessToken  string `json:"access_token"`
-	IdToken      string `json:"id_token"`
+	IDToken      string `json:"id_token"`
 }
 
-func NewAuthClient(clientId, clientSecret, redirectURL string) *OAuthClient {
+func NewAuthClient(clientID, clientSecret, redirectURL string) *OAuthClient {
 	return &OAuthClient{
 		Config: &oauth2.Config{
-			ClientID:     clientId,
+			ClientID:     clientID,
 			ClientSecret: clientSecret,
 			RedirectURL:  redirectURL,
 			Scopes:       []string{"read_only"},
