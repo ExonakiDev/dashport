@@ -2,13 +2,16 @@
 package schwab
 
 import (
-	"context"
+	"bufio"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
-
-	//"os"
-	"time"
+	"net/url"
+	"os"
+	"strings"
 
 	"golang.org/x/oauth2"
 )
@@ -21,6 +24,25 @@ var (
 type OAuthClient struct {
 	Config *oauth2.Config
 	Token  *oauth2.Token
+}
+
+// {
+//
+//	 "expires_in": 1800, //Number of seconds access_token is valid for
+//	 "token_type": "Bearer",
+//	 "scope": "api",
+//	 "refresh_token": "{REFRESH_TOKEN_HERE}", //Valid for 7 days
+//	 "access_token": "{ACCESS_TOKEN_HERE}", //Valid for 30 minutes
+//	 "id_token": "{JWT_HERE}"
+//	}
+
+type TokenResponse struct {
+	ExpiresIn    int    `json:"expires_in"`
+	TokenType    string `json:"token_type"`
+	Scope        string `json:"Scope"`
+	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
+	IdToken      string `json:"id_token"`
 }
 
 func NewAuthClient(clientId, clientSecret, redirectURL string) *OAuthClient {
@@ -38,39 +60,55 @@ func NewAuthClient(clientId, clientSecret, redirectURL string) *OAuthClient {
 	}
 }
 
-func (c *OAuthClient) Authenticate() error {
+func (c *OAuthClient) Authenticate() (string, error) {
 	url := fmt.Sprintf("%s?client_id=%s&redirect_uri=%s", schwabAuthURL, c.Config.ClientID, c.Config.RedirectURL)
 	fmt.Println("Visit URL:")
 	fmt.Println(url)
 
-	// make channel
-	codeCh := make(chan string)
-	// make http server
-	srv := &http.Server{Addr: ":8080"}
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Print("Paste Code Returned in Browser URL:")
+	code, err := reader.ReadString('\n')
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-		code := r.URL.Query().Get("code")
-		session := r.URL.Query().Get("session")
-		fmt.Fprintf(w, "Authorization code received! You can close this window.\n")
-		fmt.Printf("Code: %s\nSession: %s\n", code, session)
-
-		codeCh <- code
-	})
-
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed: %v", err)
-		}
-	}()
-
-	// Wait for code
-	code := <-codeCh
+	code = strings.TrimSpace(code)
 	fmt.Printf("Received code from Schwab API: %s\n", code)
 
-	// Shutdown server gracefully
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	srv.Shutdown(ctx)
+	return code, err
+}
 
-	return nil
+// curl -X POST https://api.schwabapi.com/v1/oauth/token \
+// -H 'Authorization: Basic {BASE64_ENCODED_Client_ID:Client_Secret} \
+// -H 'Content-Type: application/x-www-form-urlencoded' \
+// -d 'grant_type=authorization_code&code={AUTHORIZATION_CODE_VALUE}&redirect_uri=https://example_url.com/callback_example'
+
+func (c *OAuthClient) GetToken(code string) oauth2.Token {
+	clientIDSecret := c.Config.ClientID + ":" + c.Config.ClientSecret
+	credentials := base64.StdEncoding.EncodeToString([]byte(clientIDSecret))
+
+	data := url.Values{}
+	data.Set("grant_type", fmt.Sprintf("authorization_code&code=%s&redirect_uri=%s", code, c.Config.RedirectURL))
+	req, err := http.NewRequest("GET", schwabTokenURL, strings.NewReader(data.Encode()))
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", credentials))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
+
+	var token oauth2.Token
+	json.Unmarshal(body, &token)
+
+	return token
 }
