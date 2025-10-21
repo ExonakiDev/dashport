@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ExonakiDev/dashport/api/schwab" // ← adjust this path to match your module name
+	"github.com/ExonakiDev/dashport/api/schwab"
 	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
@@ -26,7 +26,6 @@ func main() {
 	redirectURI := os.Getenv("CALLBACK_URL")
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	// Create OAuth client from your schwab package
 	oauthClient := schwab.NewAuthClient(clientID, clientSecret, redirectURI)
 
 	// Load existing token if available
