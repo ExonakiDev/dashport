@@ -85,12 +85,18 @@ func (c *OAuthClient) Authenticate() (string, error) {
 
 func (c *OAuthClient) GetToken(code string) oauth2.Token {
 	log.Print("Attempting to get token..")
-	clientIDSecret := c.Config.ClientID + ":" + c.Config.ClientSecret
+	clientIDSecret := fmt.Sprintf("%s:%s", c.Config.ClientID, c.Config.ClientSecret)
+
+	fmt.Printf("%s\n", clientIDSecret)
 	credentials := base64.StdEncoding.EncodeToString([]byte(clientIDSecret))
 
-	data := url.Values{}
-	data.Set("grant_type", fmt.Sprintf("authorization_code&code=%s&redirect_uri=%s", code, c.Config.RedirectURL))
-	req, err := http.NewRequest("POST", schwabTokenURL, strings.NewReader(data.Encode()))
+	decodedCode, err := url.QueryUnescape(code)
+	if err != nil {
+		log.Fatal("Error decoding code!")
+	}
+
+	rawPayload := fmt.Sprintf("grant_type=authorization_code&code=%s&redirect_uri=%s", decodedCode, c.Config.RedirectURL)
+	req, err := http.NewRequest("POST", schwabTokenURL, strings.NewReader(rawPayload))
 	if err != nil {
 		panic(err)
 	}

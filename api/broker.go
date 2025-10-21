@@ -1,4 +1,3 @@
-// api/broker.go
 package api
 
 type Broker interface {

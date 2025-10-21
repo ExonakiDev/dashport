@@ -8,21 +8,22 @@ import (
 	"time"
 
 	"github.com/ExonakiDev/dashport/api/schwab" // ← adjust this path to match your module name
-	"github.com/spf13/viper"
+	"github.com/joho/godotenv"
 	"golang.org/x/oauth2"
 )
 
 const (
-	tokenFile    = "token.json"
+	tokenFile = "token.json"
 )
 
 func main() {
-	viper.SetConfigName("config")
-	err := viper.ReadInConfig()
-	if err != nil {
-		fmt.Println("Error reading in Config")
+	if err := godotenv.Load(".env"); err != nil {
+		log.Printf("No .env file found or could not load: %v", err)
 	}
 
+	clientID := os.Getenv("CLIENT_ID")
+	clientSecret := os.Getenv("CLIENT_SECRET")
+	redirectURI := os.Getenv("CALLBACK_URL")
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	// Create OAuth client from your schwab package
@@ -42,7 +43,7 @@ func main() {
 		saveToken(tokenFile, &token)
 	}
 
-	fmt.Sprintf("Received Token: %s", token.AccessToken)
+	fmt.Printf("Received Token: %s", token.AccessToken)
 }
 
 func saveToken(path string, token *oauth2.Token) {
@@ -74,4 +75,3 @@ func loadToken(path string) (*oauth2.Token, error) {
 	}
 	return &token, nil
 }
-
