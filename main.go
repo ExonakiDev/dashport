@@ -30,23 +30,36 @@ func main() {
 
 	// Load existing token if available
 	token, err := loadToken(tokenFile)
+
 	if err != nil || !token.Valid() {
-		fmt.Println("No valid token found — starting OAuth flow...")
+		fmt.Println("Trying to refresh token")
 
-		code, err := oauthClient.Authenticate()
-		if err != nil {
-			log.Fatalf("OAuth authentication failed: %v", err)
+		var token oauth2.Token
+
+		if token.RefreshToken != "" {
+			token = oauthClient.RefreshToken(token.RefreshToken)
+		} else {
+			fmt.Println("No valid token/refresh token found — starting OAuth flow...")
+
+			code, err := oauthClient.Authenticate()
+			if err != nil {
+				log.Fatalf("OAuth authentication failed: %v", err)
+			}
+
+			token = oauthClient.GetToken(code)
+			fmt.Printf("Received Token: %s", token.AccessToken)
 		}
-
-		token := oauthClient.GetToken(code)
 		saveToken(tokenFile, &token)
 	}
 
-	fmt.Printf("Received Token: %s", token.AccessToken)
+	fmt.Printf("Read token from file (%s): %s", tokenFile, token.AccessToken)
 }
 
 func saveToken(path string, token *oauth2.Token) {
 	file, err := os.Create(path)
+	token.Expiry = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second)
+	log.Printf("Token will expire at %s", token.Expiry)
+
 	if err != nil {
 		log.Printf("Failed to save token: %v", err)
 		return

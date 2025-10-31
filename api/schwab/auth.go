@@ -128,3 +128,44 @@ func (c *OAuthClient) GetToken(code string) oauth2.Token {
 
 	return token
 }
+
+func (c *OAuthClient) RefreshToken(refreshToken string) oauth2.Token {
+	log.Print("Attempting to get new access token using refresh token...")
+	clientIDSecret := fmt.Sprintf("%s:%s", c.Config.ClientID, c.Config.ClientSecret)
+
+	fmt.Printf("%s\n", clientIDSecret)
+	credentials := base64.StdEncoding.EncodeToString([]byte(clientIDSecret))
+
+	rawPayload := fmt.Sprintf("grant_type=refresh_token&refresh_token=%s", refreshToken)
+	req, err := http.NewRequest("POST", schwabTokenURL, strings.NewReader(rawPayload))
+	if err != nil {
+		panic(err)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Basic %s", credentials))
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	dumpedRequest, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Dumped Request")
+	fmt.Printf("Sending Request: %s", string(dumpedRequest))
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal("Failed to create Request!")
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	fmt.Println(string(body))
+
+	var token oauth2.Token
+	json.Unmarshal(body, &token)
+
+	return token
+}
